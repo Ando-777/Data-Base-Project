@@ -47,20 +47,40 @@ class Festival(FestivalBase):
 
 @app.post("/festivals/", response_model=Festival)
 def create_festival(festival: FestivalCreate, db: Session = Depends(get_db)):
-    pass
+    db_festival = Festival(**festival.dict())
+    db.add(db_festival)
+    db.commit()
+    db.refresh(db_festival)
+    return db_festival
 
 @app.get("/festivals/", response_model=List[Festival])
 def read_festivals(skip: int = 0, limit: int = 10, db: Session = Depends(get_db)):
-    pass
+    festivals = db.query(Festival).offset(skip).limit(limit).all()
+    return festivals
 
 @app.get("/festivals/{festival_id}", response_model=Festival)
 def read_festival(festival_id: int, db: Session = Depends(get_db)):
-    pass
+    db_festival = db.query(Festival).filter(Festival.id == festival_id).first()
+    if db_festival is None:
+        raise HTTPException(status_code=404, detail="Festival not found")
+    return db_festival
 
 @app.put("/festivals/{festival_id}", response_model=Festival)
 def update_festival(festival_id: int, festival: FestivalCreate, db: Session = Depends(get_db)):
-    pass
+    db_festival = db.query(Festival).filter(Festival.id == festival_id).first()
+    if db_festival is None:
+        raise HTTPException(status_code=404, detail="Festival not found")
+    for var, value in vars(festival).items():
+        setattr(db_festival, var, value) if value else None
+    db.commit()
+    db.refresh(db_festival)
+    return db_festival
 
-@app.delete("/festivals/{festival_id}")
+@app.delete("/festivals/{festival_id}", status_code=204)
 def delete_festival(festival_id: int, db: Session = Depends(get_db)):
-    pass
+    db_festival = db.query(Festival).filter(Festival.id == festival_id).first()
+    if db_festival is None:
+        raise HTTPException(status_code=404, detail="Festival not found")
+    db.delete(db_festival)
+    db.commit()
+    return {"ok": True}
